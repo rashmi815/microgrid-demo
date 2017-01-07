@@ -18,7 +18,8 @@
   create schema mgd;
 
 -- Create empty table
-  create table mgd.microgrid_data (building_num int, tslocal bigint, usagekw double precision);
+  create table mgd.microgrid_data (building_num int, tslocal bigint, usagekw double precision)
+    distributed by (building_num);
 
 -- Copy data from file into table
 -- Unzip the data file before running th
