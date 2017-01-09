@@ -9,13 +9,13 @@
 
 -- Sample rows of data
 select * from mgdemo.microgrid_data order by buidling_num, tslocal limit 10;
+--
 
 /*
  * VIEW of all the meters which have a delta_time of 60 seconds, ignoring others.
  * Only data collected every 60 seconds will be used.
  * delta_time represents the time between two consecutive timestamps of a meter.
  */
--- Executing query:
 CREATE OR REPLACE VIEW mgdemo.mgdata_dt60sec_check_view1 AS
 	SELECT *
 	, ct_tslocal-ct_deltatime_60sec AS diff_ct
@@ -38,12 +38,12 @@ CREATE OR REPLACE VIEW mgdemo.mgdata_dt60sec_check_view1 AS
 
 -- select * from mgdemo.mgdata_dt30min_check_view1 order by building_num;
 
--- Count how many buildings have different values for diff_ct
--- diff_ct should equal 1 for time series with data at 60 second intervals
-select diff_ct, count(*) as ct_buildings
-from mgdemo.mgdata_dt60sec_check_view1
-group by diff_ct
-order by diff_ct;
+-- -- Count how many buildings have different values for diff_ct
+-- -- diff_ct should equal 1 for time series with data at 60 second intervals
+-- select diff_ct, count(*) as ct_buildings
+-- from mgdemo.mgdata_dt60sec_check_view1
+-- group by diff_ct
+-- order by diff_ct;
 
 /*
  * VIEW with only those meters that have diff_ct = 1. This query gets those meters
@@ -58,13 +58,13 @@ CREATE OR REPLACE VIEW mgdemo.mgdata_diffct1_view1 AS
 		t1.building_num = t2.building_num
 		AND t2.diff_ct = 1;
 
--- Note the number of buildings that have diff_ct =1 should match the result
--- in the query above that counts how many buildings have different diff_ct values
-select count(*) as ct_buildings
-from (
-	select building_num from mgdemo.mgdata_diffct1_view1
-	group by 1
-) t1;
+-- -- Note the number of buildings that have diff_ct =1 should match the result
+-- -- in the query above that counts how many buildings have different diff_ct values
+-- select count(*) as ct_buildings
+-- from (
+-- 	select building_num from mgdemo.mgdata_diffct1_view1
+-- 	group by 1
+-- ) t1;
 
 
 -- TABLE containing start and end times for each meter and COUNT of how many data points we have.
@@ -83,14 +83,14 @@ CREATE TABLE mgdemo.mgdata_dfct1_tslocalcts_t1 AS
 		) t1
 		DISTRIBUTED BY (building_num);
 
--- Check how many meters have different start and end points
--- or if the number of points measured is different
--- It is ideal to have the same start and end points,
--- and the same number of data points in between
-select ts_start, ts_end, ct_tslocal, count(*) as ct
-from mgdemo.mgdata_dfct1_tslocalcts_t1
-group by 1,2,3
-order by 1,2,3;
+-- -- Check how many meters have different start and end points
+-- -- or if the number of points measured is different
+-- -- It is ideal to have the same start and end points,
+-- -- and the same number of data points in between
+-- select ts_start, ts_end, ct_tslocal, count(*) as ct
+-- from mgdemo.mgdata_dfct1_tslocalcts_t1
+-- group by 1,2,3
+-- order by 1,2,3;
 
 /*
  * TABLE making sure COUNTs of data points are correct.
@@ -108,11 +108,11 @@ CREATE TABLE mgdemo.mgdata_dfct1_itvlct1440_t1 AS
 		AND t2.ct_tslocal = 1440
 DISTRIBUTED BY (building_num);
 
--- This query should show only one ct_ts value (1440 for this dataset) 
--- and the right number of buildings associated with it (442 for this dataset)
-SELECT ct_ts, count(*) as ct_buildings from (
-	select building_num, count(*) as ct_ts from mgdemo.mgdata_dfct1_itvlct1440_t1
-	group by 1
-) t1
-group by 1
-order by 1;
+-- -- This query should show only one ct_ts value (1440 for this dataset)
+-- -- and the right number of buildings associated with it (442 for this dataset)
+-- SELECT ct_ts, count(*) as ct_buildings from (
+-- 	select building_num, count(*) as ct_ts from mgdemo.mgdata_dfct1_itvlct1440_t1
+-- 	group by 1
+-- ) t1
+-- group by 1
+-- order by 1;
