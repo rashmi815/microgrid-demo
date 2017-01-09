@@ -18,7 +18,7 @@ select * from mgdemo.microgrid_data order by buidling_num, tslocal limit 10;
 -- Executing query:
 CREATE OR REPLACE VIEW mgdemo.mgdata_dt30min_check_view1 AS
 	SELECT *
-	, ct_tslocal-cnt_deltatime_60sec AS diff_ct
+	, ct_tslocal-ct_deltatime_60sec AS diff_ct
 	FROM (
 		SELECT
 			building_num
