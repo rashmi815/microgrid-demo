@@ -57,25 +57,53 @@ CREATE OR REPLACE VIEW mgdemo.mgdata_diffct1_view1 AS
 		AND t2.diff_ct = 1;
 
 select count(*) as ct_buildings
-from
-(
+from (
 	select building_num from mgdemo.mgdata_diffct1_view1
 	group by 1
 ) t1;
 
 
 -- TABLE containing start and end times for each meter and COUNT of how many data points we have.
-CREATE TABLE mgdemo.mgdata_dfct1_itvlcts_t1 AS
+CREATE TABLE mgdemo.mgdata_dfct1_tslocalcts_t1 AS
 	SELECT *
 	FROM (
 		SELECT
 			building_num,
 			min(tslocal) AS ts_start,
 			max(tslocal) AS ts_end,
-			COUNT(tslocal) AS ct_itvl_ts
+			COUNT(tslocal) AS ct_tslocal
 		FROM
 			mgdemo.mgdata_diffct1_view1
 		GROUP BY
 			building_num
 		) t1
 		DISTRIBUTED BY (building_num);
+
+select ts_start, ts_end, ct_tslocal, count(*) as ct
+from mgdemo.mgdata_dfct1_tslocalcts_t1
+group by 1,2,3
+order by 1,2,3;
+
+/*
+ * TABLE making sure COUNTs of data points are correct.
+ * Each device should have the same start time and end time
+ * and interval COUNT of 1440 (the number of minutes in a 24-hour period).
+ * TABLE to be used as starting point for clustering.
+ */
+CREATE OR REPLACE VIEW mgdemo.mgdata_dfct1_itvlct1440_t1 AS
+	SELECT t1.*
+	FROM
+		mgdemo.mgdata_diffct1_view1 t1
+		, mgdemo.mgdata_dfct1_tslocalcts_t1 t2
+	WHERE
+		t1.building_num = t2.building_num
+		AND t2.ct_tslocal = 1440;
+DISTRIBUTED BY (building_num);
+
+
+SELECT ct_ts, count(*) as ct_buildings from (
+	select building_num, count(*) as ct_ts from mgdemo.mgdata_dfct1_itvlct1440_t1
+	group by 1
+) t1
+group by 1
+order by 1;
