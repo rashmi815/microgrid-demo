@@ -8,20 +8,20 @@
  * ---- The home/building number in original dataset is given as part of file name
  * ---- Used Python notebook to read in and create single file from the 443 files
  * ---- Appended the building number when creating single file
- * ---- Format of single data file: Building Number, Local Timestamp, Usage kW
+ * ---- Format of single data file: Building Number (integer), Local Timestamp (long/bigint), Usage kW (double precision)
  * ---- NOTE: Unzip the data file: data/microgrid_all.csv.gz before running this script
  *
  *=================================================================================================
  */
 
 -- Create schema for demo
-  create schema mgd;
+  create schema mgdemo;
 
 -- Create empty table
-  create table mgd.microgrid_data (building_num int, tslocal bigint, usagekw double precision)
+  create table mgdemo.microgrid_data (building_num int, tslocal bigint, usagekw double precision)
     distributed by (building_num);
 
 -- Copy data from file into table
 -- Unzip the data file before running th
 -- Make sure to replace the file name and path in the query below with the right one for your system
-copy mgd.microgrid_data from './data/microgrid_all.csv' delimiter ',' csv;
+copy mgdemo.microgrid_data from 'microgrid_all.csv' delimiter ',' csv;
