@@ -16,7 +16,7 @@ select * from mgdemo.microgrid_data order by buidling_num, tslocal limit 10;
  * delta_time represents the time between two consecutive timestamps of a meter.
  */
 -- Executing query:
-CREATE OR REPLACE VIEW mgdemo.mgdata_dt30min_check_view1 AS
+CREATE OR REPLACE VIEW mgdemo.mgdata_dt60sec_check_view1 AS
 	SELECT *
 	, ct_tslocal-ct_deltatime_60sec AS diff_ct
 	FROM (
@@ -39,7 +39,7 @@ CREATE OR REPLACE VIEW mgdemo.mgdata_dt30min_check_view1 AS
 -- select * from mgdemo.mgdata_dt30min_check_view1 order by building_num;
 
 select diff_ct, count(*) as ct_buildings
-from mgdemo.mgdata_dt30min_check_view1
+from mgdemo.mgdata_dt60sec_check_view1
 group by diff_ct
 order by diff_ct;
 
@@ -51,7 +51,7 @@ CREATE OR REPLACE VIEW mgdemo.mgdata_diffct1_view1 AS
 	SELECT t1.*
 	FROM
 		mgdemo.microgrid_data t1
-		, mgdemo.mgdata_dt30min_check_view1 t2
+		, mgdemo.mgdata_dt60sec_check_view1 t2
 	WHERE
 		t1.building_num = t2.building_num
 		AND t2.diff_ct = 1;
