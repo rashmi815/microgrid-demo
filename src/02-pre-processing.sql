@@ -90,7 +90,7 @@ order by 1,2,3;
  * and interval COUNT of 1440 (the number of minutes in a 24-hour period).
  * TABLE to be used as starting point for clustering.
  */
-CREATE OR REPLACE VIEW mgdemo.mgdata_dfct1_itvlct1440_t1 AS
+CREATE TABLE mgdemo.mgdata_dfct1_itvlct1440_t1 AS
 	SELECT t1.*
 	FROM
 		mgdemo.mgdata_diffct1_view1 t1
