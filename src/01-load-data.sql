@@ -22,6 +22,6 @@
     distributed by (building_num);
 
 -- Copy data from file into table
--- Unzip the data file before running th
+-- Unzip the data file before running the query below
 -- Make sure to replace the file name and path in the query below with the right one for your system
 copy mgdemo.microgrid_data from 'microgrid_all.csv' delimiter ',' csv;
