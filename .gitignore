@@ -2,3 +2,5 @@ data/UMASS_data/microgrid
 twb
 data/UMASS_data/.ipynb_checkpoints
 src/.ipynb_checkpoints
+tmp_scratch.sql
+fft_test.ipynb
