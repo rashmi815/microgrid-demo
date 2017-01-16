@@ -199,15 +199,15 @@ CREATE TABLE mgdemo.mgdata_clean_with_id_tbl AS
     usagekw
   FROM (
     SELECT
-      row_number() over () AS rgid,
-      row_number() over (PARTITION BY building_num) AS rid,
+      row_number() over (ORDER BY building_num, tslocal) AS rgid,
+      row_number() over (PARTITION BY building_num ORDER BY tslocal) AS rid,
       *
     FROM
       mgdemo.mgdata_clean_tbl
   ) t1,
   (
     SELECT
-      row_number() over () AS bgid,
+      row_number() over (ORDER BY building_num) AS bgid,
       building_num
     FROM (
       SELECT building_num
@@ -217,4 +217,4 @@ CREATE TABLE mgdemo.mgdata_clean_with_id_tbl AS
   ) t3
   WHERE t1.building_num = t3.building_num
 DISTRIBUTED BY (rgid);
--- Query returned successfully: 636480 rows affected, 2976 ms execution time.
+-- Query returned successfully: 636480 rows affected, 2022 ms execution time.
