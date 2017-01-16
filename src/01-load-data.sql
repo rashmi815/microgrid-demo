@@ -15,13 +15,17 @@
  */
 
 -- Create schema for demo
-  create schema mgdemo;
+create schema mgdemo;
+-- Query returned successfully with no result in 45 ms.
 
 -- Create empty table
-  create table mgdemo.microgrid_data (building_num int, tslocal bigint, usagekw double precision)
-    distributed by (building_num);
+create table mgdemo.microgrid_data (building_num int, tslocal bigint, usagekw double precision)
+  distributed by (building_num);
+-- Query returned successfully with no result in 30 ms.
 
 -- Copy data from file into table
 -- Unzip the data file before running the query below
 -- Make sure to replace the file name and path in the query below with the right one for your system
 copy mgdemo.microgrid_data from 'microgrid_all.csv' delimiter ',' csv;
+-- COPY 637526
+-- Time: 1443.865 ms
