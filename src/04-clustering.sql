@@ -105,20 +105,20 @@ $$
           RAISE INFO '%', sql;
           EXECUTE sql;
 
-          RAISE INFO '===== calculating sum of squared errors (sse) =====';
-          sql := 'INSERT INTO ' || output_kmeans_table_with_schema || '_sse'
-                  || ' SELECT k, bgid, data.pgram - '
-                  || ' FROM'
-                  || ' ' || input_table_with_schema || ' as data'
-                  || ' ' || output_kmeans_table_with_schema || '_with_clustid as clust_id_tbl,'
-                  || '   (SELECT * FROM ' || output_kmeans_table_with_schema
-                  || '    WHERE k = ' || k_array[i] || ') AS kmeans_out'
-                  || ' WHERE data.bgid = clust_id_tbl.bigid'
-                  || ' GROUP BY cluster_id';
-          RAISE INFO '===== query =====';
-          RAISE INFO '%', sql;
-          EXECUTE sql INTO sse;
-          RAISE INFO '===== sse=% =====', sse;
+          -- RAISE INFO '===== calculating sum of squared errors (sse) =====';
+          -- sql := 'INSERT INTO ' || output_kmeans_table_with_schema || '_sse'
+          --         || ' SELECT k, bgid, data.pgram - '
+          --         || ' FROM'
+          --         || ' ' || input_table_with_schema || ' as data'
+          --         || ' ' || output_kmeans_table_with_schema || '_with_clustid as clust_id_tbl,'
+          --         || '   (SELECT * FROM ' || output_kmeans_table_with_schema
+          --         || '    WHERE k = ' || k_array[i] || ') AS kmeans_out'
+          --         || ' WHERE data.bgid = clust_id_tbl.bigid'
+          --         || ' GROUP BY cluster_id';
+          -- RAISE INFO '===== query =====';
+          -- RAISE INFO '%', sql;
+          -- EXECUTE sql INTO sse;
+          -- RAISE INFO '===== sse=% =====', sse;
 
           RAISE INFO '===== i = % ==== k = % ===== END =====', i, k_array[i];
       END LOOP;
