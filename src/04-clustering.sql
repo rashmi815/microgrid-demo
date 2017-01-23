@@ -163,7 +163,7 @@ $$
 
           RAISE INFO '===== i = % ==== k = % ===== END =====', i, k_array[i];
       END LOOP;
-  END;
+  END; 
 $$
 LANGUAGE 'plpgsql';
 --
