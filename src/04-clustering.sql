@@ -55,7 +55,7 @@ $$
       EXECUTE sql;
 
       sql := 'CREATE TABLE ' || output_kmeans_table_with_schema || '_unnest_cent_onelevel'
-                || ' (k INT, cluster_id INT, centroid DOUBLE PRECISION[])'
+                || ' (k INT, cluster_id INT, element_order INT[], centroid DOUBLE PRECISION[])'
                 || ' DISTRIBUTED RANDOMLY;';
       EXECUTE sql;
 
@@ -65,7 +65,7 @@ $$
       EXECUTE sql;
 
       numk := array_upper(k_array,1);
-      sql := 'SELECT array_upper(centroids[1],1) FROM ' || output_kmeans_table_with_schema;
+      sql := 'SELECT array_upper(pgram,1) FROM ' || input_table_with_schema;
       EXECUTE sql INTO num_features;
 
       FOR i IN 1..numk LOOP
@@ -118,7 +118,7 @@ $$
           RAISE INFO '===== START: unnest multidimensional centroids array by one level only =====';
           sql := 'INSERT INTO ' || output_kmeans_table_with_schema || '_unnest_cent_onelevel'
                   || ' SELECT k, cluster_id, array_agg(ucentorder ORDER BY ucentorder) AS element_order, array_agg(ucent ORDER BY ucentorder) AS centroid FROM'
-                      || ' (SELECT t2.k, unnest(arr_ucid) AS cluster_id, unnest(arr_centorder) AS ucentorder, unnest(cent) AS ucent FROM'
+                      || ' (SELECT t2.k, unnest(arr_ucid) AS cluster_id, unnest(arr_centorder) AS ucentorder, unnest(centroids) AS ucent FROM'
                           || ' (SELECT k, array_agg(ucidmult order by ucidmult,centorder) AS arr_ucid, array_agg(centorder ORDER BY ucidmult,centorder) AS arr_centorder FROM'
                               || ' (SELECT k, ucidmult, row_number() over (partition by k, ucidmult) AS centorder FROM'
                                   || ' (SELECT k, unnest(cidmult) AS ucidmult FROM'
@@ -130,33 +130,35 @@ $$
                               || ' ) td'
                           || ' GROUP BY k'
                           || ' ) t2,'
-                          || ' (SELECT centroids FROM ' || output_kmeans_table_with_schema || ' WHERE k = ' || k_array[i]
+                          || ' (SELECT k, centroids FROM ' || output_kmeans_table_with_schema || ' WHERE k = ' || k_array[i]
                           || ' ) t3'
                       || ' WHERE t2.k = t3.k'
                       || ' ) t4'
-                  || ' GROUP BY k, ucid;';
+                  || ' GROUP BY k, cluster_id;';
           RAISE INFO '%', sql;
           EXECUTE sql;
           RAISE INFO '===== END: unnest multidimensional centroids array by one level only =====';
 
           RAISE INFO '===== calculating sum of squared errors (sse) =====';
           sql := 'INSERT INTO ' || output_kmeans_table_with_schema || '_sse'
-                  || ' SELECT k, sum(point_to_centroid_error) as sse FROM'
-                      || ' (SELECT k, bgid, madlib.array_sum(madlib.array_square(madlib.array_sub(data.pgram,centroid))) AS point_to_centroid_error'
+                  || ' SELECT k, sum(point_to_centroid_error) AS sse FROM'
+                      || ' (SELECT clust_id_tbl.k AS k, clust_id_tbl.bgid, clust_id_tbl.cluster_id,'
+                      || '   madlib.array_sum(madlib.array_square(madlib.array_sub(data.pgram,centroid))) AS point_to_centroid_error'
                       || ' FROM'
-                      || ' ' || input_table_with_schema || ' AS data'
+                      || ' ' || input_table_with_schema || ' AS data,'
                       || ' ' || output_kmeans_table_with_schema || '_with_clustid AS clust_id_tbl,'
                       || '   (SELECT * FROM ' || output_kmeans_table_with_schema || '_unnest_cent_onelevel'
                       || '    WHERE k = ' || k_array[i] || ') AS kmeans_cent_unnest_one_tbl'
                       || ' WHERE data.bgid = clust_id_tbl.bgid'
                       || '   AND clust_id_tbl.k = kmeans_cent_unnest_one_tbl.k'
                       || '   AND clust_id_tbl.cluster_id = kmeans_cent_unnest_one_tbl.cluster_id'
-                      || ' GROUP BY cluster_id'
+                      --|| ' GROUP BY clust_id_tbl.k, clust_id_tbl.bgid, clust_id_tbl.cluster_id'
                       || ' ) t1'
                   || ' GROUP BY k;';
           RAISE INFO '===== query =====';
           RAISE INFO '%', sql;
-          EXECUTE sql INTO sse;
+          EXECUTE sql;
+          EXECUTE 'SELECT sse FROM ' || output_kmeans_table_with_schema || '_sse' || ' WHERE k = ' || k_array[i] || ';' INTO sse;
           RAISE INFO '===== sse=% =====', sse;
 
           RAISE INFO '===== i = % ==== k = % ===== END =====', i, k_array[i];
@@ -168,7 +170,7 @@ LANGUAGE 'plpgsql';
 
 -- Run the function for 3 to 20 clusters
 SELECT mgdemo.run_kmeans('mgdemo.mgdata_pgram_array_tbl','mgdemo.mgdata_kmeans_out',array_agg(km order by km))
-FROM (SELECT generate_series(3,5,1) as km) t1;
+FROM (SELECT generate_series(3,20,1) as km) t1;
 -- Total query runtime: 13873 ms.
 -- 1 row retrieved.
 
