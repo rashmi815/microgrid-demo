@@ -1,11 +1,11 @@
 /*=================================================================================================
- *				 APPLYING K-MEANS CLUSTERING
+ *         APPLYING K-MEANS CLUSTERING
  *
  * - Cluster periodogram feature vectors using K-means algorithm in MADlib using k=...
- * 		- Find the centroids of the clusters, cluster assignments for the periodograms, and the
- *			distances between each point and centroid for each cluster
- *		- Calculate silhouette coefficients for every data point(pgram) in each cluster level.
- * 		- Calculate the average silhouette coefficient for each cluster level.
+ *     - Find the centroids of the clusters, cluster assignments for the periodograms, and the
+ *      distances between each point and centroid for each cluster
+ *    - Calculate silhouette coefficients for every data point(pgram) in each cluster level.
+ *     - Calculate the average silhouette coefficient for each cluster level.
  * - Re-cluster ...
  *
  *
@@ -174,6 +174,128 @@ FROM (SELECT generate_series(3,20,1) as km) t1;
 -- Total query runtime: 13873 ms.
 -- 1 row retrieved.
 
+
+/*
+ * TABLE of centroids periodograms unnest from k-means output unnested. This TABLE is
+ * used unnest the two dimensional centroids array from k-means output.
+ */
+CREATE TABLE mgdemo.mgdata_centroids_unnest_foreachk_tbl AS
+  SELECT
+    k,
+    ((row_number() over(partition by k))+(array_len-1))/array_len AS array_id,
+    index_id,
+    cent_points
+  FROM
+  (
+    SELECT
+      k,
+      array_len,
+      generate_series(1,array_len,1) as index_id,
+      unnest(centroids) AS cent_points
+    FROM (
+      SELECT k, centroids, array_upper(centroids,2) AS array_len
+      FROM mgdemo.mgdata_kmeans_out
+    ) t1
+  ) t2
+DISTRIBUTED BY (k,array_id,index_id);
+-- Query returned successfully: 231840 rows affected, 3615 ms execution time.
+
+
+-- TABLE of centroids AND respective cid's.
+CREATE TABLE mgdemo.mgdata_centroids_cluster_id_tbl AS
+  SELECT
+    k,
+    cent_coords,
+    (madlib.closest_column(centroids, cent_coords)).column_id AS cluster_id
+  FROM (
+    SELECT
+      t1.k,
+      cent_coords,
+      centroids
+    FROM (
+      SELECT
+        k,
+        array_agg(cent_points ORDER BY index_id) AS cent_coords
+      FROM
+        mgdemo.mgdata_centroids_unnest_foreachk_tbl
+      GROUP BY
+        k, array_id
+    ) t1,
+    mgdemo.mgdata_kmeans_out t2
+    WHERE t1.k = t2.k
+  ) t2
+DISTRIBUTED RANDOMLY;
+-- Query returned successfully: 322 rows affected, 292 ms execution time.
+
+
+CREATE TABLE mgdemo.mgdata_pgram_datapnts_cluster_id_tbl AS
+  SELECT
+    k,
+    bgid,
+    pgram,
+    (madlib.closest_column(centroids, pgram)).column_id AS cluster_id
+  FROM
+    mgdemo.mgdata_pgram_array_tbl,
+    (SELECT k, centroids FROM mgdemo.mgdata_kmeans_out) t1
+DISTRIBUTED BY (k,cluster_id,bgid)
+;
+-- Query returned successfully: 10166 rows affected, 8643 ms execution time.
+
+
+-- TABLE of distances between pgrams and respective cluster centroids in LEVEL 1.0.
+CREATE TABLE mgdemo.mgdata_pgramdata_centroid_dist_tbl AS
+  SELECT
+    t1.k,
+    t2.cluster_id,
+    bgid,
+    sqrt(madlib.array_dot(madlib.array_sub(km_cent,km_pnts),madlib.array_sub(km_cent,km_pnts))) AS l2dist
+  FROM (
+    SELECT
+      k,
+      cluster_id,
+      cent_coords::float8[] AS km_cent
+    FROM
+      mgdemo.mgdata_centroids_cluster_id_tbl
+  ) t1,
+  (
+    SELECT
+      k,
+      cluster_id,
+      bgid,
+      pgram::float8[] AS km_pnts
+    FROM
+      mgdemo.mgdata_pgram_datapnts_cluster_id_tbl
+  ) t2
+  WHERE
+    t1.k = t2.k
+    AND
+    t1.cluster_id = t2.cluster_id
+DISTRIBUTED BY (k,cluster_id,bgid);
+
+
+-- TABLE of meter readings AND respective LEVEL 1 cluster assignments.
+-- Executing query:
+CREATE TABLE mgdemo.mgdata_pgram_datapnts_unnest_cluster_id_tbl AS
+  SELECT
+    cid,
+    unnest(coords) AS kmc,
+    unnest(ridarray) AS rowid
+  FROM (
+    SELECT
+      cid,
+      pgram::float8[],
+      ridarray
+    FROM
+      mgdemo.mgdata_pgram_datapnts_cluster_id_tbl t1,
+      , ( SELECT
+            array_agg(rid ORDER BY rid) AS ridarray
+          FROM
+            asdemo.as_genseries_1_to_3360
+      ) t2
+  ) t3
+  DISTRIBUTED BY (cid);
+
+
 -- Remove code below in later versions
 -- TABLE of results from k-means algorithm.
 -- drop table if exists mgdemo.mg_kmeans_k05_t1;
@@ -232,12 +354,12 @@ order by k, ucid;
  * used unnest the two dimensional cetroids array from k-means output.
  */
 CREATE TABLE mgdemo.centroids_unnest_k10 AS
-	SELECT
-		((row_number() over())+1679)/1680 AS array_id
-		, points
-	FROM (
-		SELECT
-			unnest(centroids) AS points
-		FROM
-			asdemo.as_kmeans_level1
-	) t1;
+  SELECT
+    ((row_number() over())+1679)/1680 AS array_id
+    , points
+  FROM (
+    SELECT
+      unnest(centroids) AS points
+    FROM
+      asdemo.as_kmeans_level1
+  ) t1;
