@@ -11,10 +11,10 @@
 -- TABLE of counts of points in clusters
 CREATE TABLE mgdemo.mgdata_cluster_counts_tbl AS
   SELECT k, cluster_id, count(bgid) as ct_bgid
-  FROM mgdemo.mgdata_cluster_id_tbl
+  FROM mgdemo.mgdata_pgram_array_cluster_id_tbl
   GROUP BY k, cluster_id
 DISTRIBUTED RANDOMLY;
--- Query returned successfully: 322 rows affected, 146 ms execution time.
+
 
 -- Check to make sure that the total number of bgid(s) is 442
 -- (the number of data points that went in to clustering)
@@ -26,10 +26,69 @@ FROM (
 ) t1
 GROUP BY sum_ct_bgid
 ORDER BY sum_ct_bgid;
--- Total query runtime: 47 ms.
--- 1 row retrieved.
--- 442;"{3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25}";23
 
+
+-- Function to compute silhouette coefficients for each k
+
+-- Compute silhouette coefficients for each k
+CREATE TABLE mgdemo.mgdata_km_output_silhcoef AS
+  SELECT madlib.simple_silhouette (   'mgdemo.mgdata_pgram_array_tbl',
+                                      'pgram',
+                                      (SELECT centroids FROM mgdemo.mgdata_kmeans_output_tbl),
+                                      'madlib.dist_norm2'
+                                  );
+DISTRIBUTED RANDOMLY;
+
+
+-- TABLE of distances between pgrams and respective cluster centroids
+CREATE TABLE mgdemo.mgdata_pgram_array_centroids_dist_tbl AS
+  SELECT
+    t1.k,
+    t2.cluster_id,
+    bgid,
+    sqrt(madlib.array_dot(madlib.array_sub(km_cent,km_pnts),madlib.array_sub(km_cent,km_pnts))) AS l2dist
+  FROM (
+    SELECT
+      k,
+      cluster_id,
+      centroid_array::float8[] AS km_cent
+    FROM
+      mgdemo.mgdata_km_centroids_unnest_onelevel_cluster_id_tbl
+  ) t1,
+  (
+    SELECT
+      k,
+      cluster_id,
+      bgid,
+      pgram::float8[] AS km_pnts
+    FROM
+      mgdemo.mgdata_pgram_array_cluster_id_tbl
+  ) t2
+  WHERE
+    t1.k = t2.k
+    AND
+    t1.cluster_id = t2.cluster_id
+DISTRIBUTED BY (k,cluster_id,bgid);
+
+
+-- TABLE of meter readings AND respective cluster assignments.
+CREATE TABLE mgdemo.mgdata_pgram_array_unnest_cluster_id_tbl AS
+  SELECT
+    k,
+    cluster_id,
+    unnest(coords) AS kmc,
+    unnest(ridarray) AS rowid
+  FROM (
+    SELECT
+      k,
+      cluster_id,
+      pgram::float8[],
+      ridarray
+    FROM
+      mgdemo.mgdata_pgram_array_cluster_id_tbl t1,
+      (SELECT array_agg(rid ORDER BY rid) AS ridarray FROM asdemo.as_genseries_1_to_3360) t2
+  ) t3
+  DISTRIBUTED BY (cid);
 
 -- TABLE of pairwise L2-norm distances between the centroids in each level.
 CREATE TABLE asdemo.as_clust_centroids_level1to4_dist_t1 AS
