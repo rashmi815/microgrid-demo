@@ -66,7 +66,7 @@ DISTRIBUTED BY (bgid);
 
 
 -- TABLE of periodograms unnested for each device
-CREATE TABLE mgdemo.mgdata_pgram_arr_unnest_tbl AS
+CREATE TABLE mgdemo.mgdata_pgram_array_unnest_tbl AS
   SELECT
     bgid,
     generate_series(1,array_upper(pgram,1)) as pgid,

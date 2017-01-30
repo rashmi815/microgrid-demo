@@ -13,7 +13,7 @@
  */
 
 -- Function that loops through to run k-means clustering for different values of k
-CREATE OR REPLACE FUNCTION mgdemo.run_kmeans(
+CREATE OR REPLACE FUNCTION mgdemo.run_kmeans_fn(
   input_table_with_schema VARCHAR,
   output_kmeans_table_with_schema VARCHAR,
   k_array INT[]
@@ -62,9 +62,10 @@ LANGUAGE 'plpgsql';
 --
 
 -- Run the function for 3 to 20 clusters
-SELECT mgdemo.run_kmeans('mgdemo.mgdata_pgram_array_tbl','mgdemo.mgdata_kmeans_output_tbl',array_agg(km order by km))
-FROM (SELECT generate_series(3,25,1) as km) t1;
-
+SELECT mgdemo.run_kmeans_fn('mgdemo.mgdata_pgram_array_tbl','mgdemo.mgdata_kmeans_output_tbl',array_agg(km order by km))
+FROM (SELECT generate_series(3,15,1) as km) t1;
+-- Total query runtime: 13271 ms.
+-- 1 row retrieved.
 
 /*
  * TABLE of centroids periodograms unnest from k-means output unnested. This TABLE is
@@ -73,22 +74,27 @@ FROM (SELECT generate_series(3,25,1) as km) t1;
 CREATE TABLE mgdemo.mgdata_km_centroids_unnest_full_tbl AS
   SELECT
     k,
-    ((row_number() over(partition by k))+(array_len-1))/array_len AS array_id,
+    (index_id+(dim2-1))/dim2 AS array_id,
     index_id,
     centroid_points
   FROM
   (
     SELECT
       k,
-      array_len,
-      generate_series(1,array_len,1) as index_id,
+      dim1,
+      dim2,
+      generate_series(1,dim1*dim2,1) as index_id,
       unnest(centroids) AS centroid_points
     FROM (
-      SELECT k, centroids, array_upper(centroids,2) AS array_len
+      SELECT k, centroids, array_upper(centroids,1) AS dim1, array_upper(centroids,2) AS dim2
       FROM mgdemo.mgdata_kmeans_output_tbl
     ) t1
   ) t2
 DISTRIBUTED BY (k,array_id,index_id);
+-- Query returned successfully: 84240 rows affected, 7233 ms execution time.
+
+-- Query returned successfully: 84240 rows affected, 3965 ms execution time.
+-- Query returned successfully: 84240 rows affected, 2819100 ms execution time.
 
 
 -- TABLE of centroids AND respective cid's.
@@ -115,9 +121,13 @@ CREATE TABLE mgdemo.mgdata_km_centroids_unnest_onelevel_cluster_id_tbl AS
     WHERE t1.k = t2.k
   ) t2
 DISTRIBUTED RANDOMLY;
+-- Query returned successfully: 117 rows affected, 4676 ms execution time.
+
+-- Query returned successfully: 117 rows affected, 246 ms execution time.
 
 
 -- Assign cluster IDs to all data points
+DROP TABLE IF EXISTS mgdemo.mgdata_pgram_array_cluster_id_tbl;
 CREATE TABLE mgdemo.mgdata_pgram_array_cluster_id_tbl AS
   SELECT
     k,
@@ -128,3 +138,6 @@ CREATE TABLE mgdemo.mgdata_pgram_array_cluster_id_tbl AS
     mgdemo.mgdata_pgram_array_tbl,
     (SELECT k, centroids AS centroids_multidim_array FROM mgdemo.mgdata_kmeans_output_tbl) t1
 DISTRIBUTED BY (k,cluster_id,bgid);
+-- Query returned successfully: 5746 rows affected, 36877 ms execution time.
+
+-- Query returned successfully: 5746 rows affected, 2187 ms execution time.
