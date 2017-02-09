@@ -8,33 +8,6 @@
  *=================================================================================================
  */
 
--- TABLE of 1 day of time points and usagekw readings aggregated into arrays for each device
-CREATE TABLE mgdemo.mgdata_ts_array_tbl AS
-  SELECT
-    bgid,
-    tslocal_array,
-    usagekw_array,
-    rgid_first_last,
-    rid_first_last,
-    ARRAY[tslocal_array[1],tslocal_array[1440]] AS tslocal_first_last,
-    array_upper(tslocal_array[1:1440],1) AS array_length,
-    building_num
-  FROM (
-    SELECT
-      ARRAY[MIN(rgid), MAX(rgid)] AS rgid_first_last,
-      bgid,
-      ARRAY[MIN(rid), MAX(rid)] AS rid_first_last,
-      building_num,
-      array_agg(tslocal ORDER BY tslocal) AS tslocal_array,
-      array_agg(usagekw ORDER BY tslocal) AS usagekw_array
-    FROM
-      mgdemo.mgdata_clean_with_id_tbl
-    GROUP BY
-      building_num, bgid
-  ) t1
-DISTRIBUTED BY (bgid);
--- Query returned successfully: 442 rows affected, 1099 ms execution time.
-
 -- PL/R function that computes the periodogram based on Fast Fourier Transform algorithm
 CREATE OR REPLACE FUNCTION mgdemo.pgram_fn(tsval double precision[], taperval double precision)
   RETURNS double precision[] AS
@@ -49,29 +22,70 @@ $$
 LANGUAGE 'plr';
 -- Query returned successfully with no result in 49 ms.
 
--- TABLE of periodogram arrays for each device
-CREATE SEQUENCE gen_ids;
--- Query returned successfully with no result in 34 ms.
+-- -- TABLE of periodogram arrays for each device
+-- CREATE SEQUENCE gen_ids;
+-- -- Query returned successfully with no result in 34 ms.
+--
+-- SELECT setval('gen_ids',1); -- 0 is not accepted by the sequence
+-- CREATE TABLE mgdemo.mgdata_pgram_array_tbl AS
+--   SELECT
+--     bgid,
+--     mgdemo.pgram_fn(usagekw_array,0.0) AS pgram
+--   FROM
+--     mgdemo.mgdata_ts_array_tbl
+-- DISTRIBUTED BY (bgid);
+-- -- query result with 1 row discarded.
+-- -- Query returned successfully: 442 rows affected, 464 ms execution time.
+--
+--
+-- -- TABLE of periodograms unnested for each device
+-- CREATE TABLE mgdemo.mgdata_pgram_array_unnest_tbl AS
+--   SELECT
+--     bgid,
+--     generate_series(1,array_upper(pgram,1)) as pgid,
+--     unnest(pgram) as pgram_val
+--   FROM
+--     mgdemo.mgdata_pgram_array_tbl
+-- DISTRIBUTED BY (bgid,pgid);
+-- -- Query returned successfully: 318240 rows affected, 529 ms execution time.
 
-SELECT setval('gen_ids',1); -- 0 is not accepted by the sequence
-CREATE TABLE mgdemo.mgdata_pgram_array_tbl AS
-  SELECT
+drop table if exists pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl;
+create table pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl as
+  select *
+  from
+  (
+    select
+      bgid,
+      building_num,
+      usagekw_sum_5min_mean,
+      usagekw_sum_5min_norm_denom,
+      array_agg(win_id order by win_id) as win_id_arr,
+      array_agg(usagekw_sum_5min order by win_id) as usagekw_sum_5min_arr,
+      array_agg(usagekw_sum_5min_norm order by win_id) as usagekw_sum_5min_norm_arr
+    from
+      pt.mgdata_clean_with_id_nozero_sum_5min_norm_tbl
+    group by 1,2,3,4
+  ) t1
+  where usagekw_sum_5min_norm_denom > 1e-10 -- exclude points that have nearly zero (but not quite) signal values
+DISTRIBUTED by (bgid);
+-- Query returned successfully: 388 rows affected, 13303 ms execution time.
+
+
+
+drop table if exists pt.mgdata_pgram_norm_array_tbl;
+create table pt.mgdata_pgram_norm_array_tbl as
+  select
     bgid,
-    mgdemo.pgram_fn(usagekw_array,0.0) AS pgram
-  FROM
-    mgdemo.mgdata_ts_array_tbl
-DISTRIBUTED BY (bgid);
--- query result with 1 row discarded.
--- Query returned successfully: 442 rows affected, 464 ms execution time.
-
-
--- TABLE of periodograms unnested for each device
-CREATE TABLE mgdemo.mgdata_pgram_array_unnest_tbl AS
-  SELECT
-    bgid,
-    generate_series(1,array_upper(pgram,1)) as pgid,
-    unnest(pgram) as pgram_val
-  FROM
-    mgdemo.mgdata_pgram_array_tbl
-DISTRIBUTED BY (bgid,pgid);
--- Query returned successfully: 318240 rows affected, 529 ms execution time.
+    building_num,
+    usagekw_sum_5min_mean,
+    usagekw_sum_5min_norm_denom,
+    win_id_arr,
+    usagekw_sum_5min_arr,
+    usagekw_sum_5min_norm_arr,
+    win_id_arr[1:(array_upper(win_id_arr,1)/2)] as pgram_pt_id_arr,
+    mgdemo.pgram_fn(usagekw_sum_5min_norm_arr,0.0) as pgram_norm_arr
+  from
+    pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl
+distributed by (bgid);
+-- NOTICE:  table "mgdata_pgram_norm_array_tbl" does not exist, skipping
+-- Query returned successfully: 388 rows affected, 32609 ms execution time.

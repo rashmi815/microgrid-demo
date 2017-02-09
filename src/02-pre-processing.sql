@@ -218,3 +218,88 @@ CREATE TABLE mgdemo.mgdata_clean_with_id_tbl AS
   WHERE t1.building_num = t3.building_num
 DISTRIBUTED BY (rgid);
 -- Query returned successfully: 636480 rows affected, 2022 ms execution time.
+
+
+
+
+drop table if exists pt.mgdata_clean_with_id_nozero_tbl;
+create table pt.mgdata_clean_with_id_nozero_tbl as
+  select
+    rgid,
+    t1.bgid,
+    rid,
+    building_num,
+    tslocal,
+    (tslocal - min(tslocal) over (partition by t1.bgid)) as tslocal_fromzero,
+    usagekw
+  from
+   mgdemo.mgdata_clean_with_id_tbl t1,
+   (
+     select bgid from
+     (
+       select bgid, min(usagekw) as minu, max(usagekw) as maxu
+       from mgdemo.mgdata_clean_with_id_tbl
+       group by 1
+     ) t2
+     where minu <> 0.0 or maxu <> 0.0
+   ) t3
+  where t1.bgid = t3.bgid
+distributed by (bgid,rid);
+-- Query returned successfully: 568800 rows affected, 64466 ms execution time.
+
+drop table if exists pt.mgdata_clean_with_id_nozero_sum_5min_tbl;
+create table pt.mgdata_clean_with_id_nozero_sum_5min_tbl as
+  select
+    bgid,
+    win_id,
+    sum(usagekw) as usagekw_sum_5min,
+    building_num,
+    array_agg(rgid order by rid) as rgid_arr,
+    array_agg(rid order by rid) as rid_arr,
+    array_agg(tslocal order by rid) as tslocal_arr,
+    array_agg(tslocal_fromzero order by rid) as tslocal_fromzero_arr,
+    array_agg(usagekw order by rid) as usagekw_arr
+  from
+  (
+    select *,
+      tslocal_fromzero::int / 300 as win_id
+    from
+      pt.mgdata_clean_with_id_nozero_tbl
+  ) t1
+  group by bgid, win_id, building_num
+DISTRIBUTED by (bgid,win_id);
+-- Query returned successfully: 113760 rows affected, 28592 ms execution time.
+
+
+drop table if exists pt.mgdata_clean_with_id_nozero_sum_5min_norm_tbl;
+create table pt.mgdata_clean_with_id_nozero_sum_5min_norm_tbl as
+  select
+    bgid,
+    win_id,
+    usagekw_sum_5min,
+    (usagekw_sum_5min - usagekw_sum_5min_mean) / usagekw_sum_5min_norm_denom as usagekw_sum_5min_norm,
+    usagekw_sum_5min_mean,
+    usagekw_sum_5min_norm_denom,
+    building_num,
+    rgid_arr,
+    rid_arr,
+    tslocal_arr,
+    tslocal_fromzero_arr,
+    usagekw_arr
+  from
+  (
+    select
+      sum((usagekw_sum_5min - usagekw_sum_5min_mean)^2) over (partition by bgid) as usagekw_sum_5min_norm_denom,
+      *
+    from
+    (
+      select
+        avg(usagekw_sum_5min) over (partition by bgid) as usagekw_sum_5min_mean,
+        *
+      from
+        pt.mgdata_clean_with_id_nozero_sum_5min_tbl
+    ) t1
+  ) t2
+DISTRIBUTED by (bgid,win_id);
+-- NOTICE:  table "mgdata_clean_with_id_nozero_sum_5min_norm_tbl" does not exist, skipping
+-- Query returned successfully: 113760 rows affected, 15699 ms execution time.
