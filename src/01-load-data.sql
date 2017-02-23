@@ -3,7 +3,7 @@
  *
  * - Load the single csv file into GPDB or HDB
  * - Data: Microgrid dataset sourced from the UMASS Trace Repository: http://traces.cs.umass.edu/index.php/Smart/Smart
- * ---- Contains electrical data over a single 24-hour period from 443 unique homes
+ * ---- Contains power usage data over a single 24-hour period from 443 unique homes
  * ---- Original dataset from website contains 443 csv files - one for each home
  * ---- The home/building number in original dataset is given as part of file name
  * ---- Used Python notebook to read in and create single file from the 443 files
@@ -11,6 +11,7 @@
  * ---- Format of single data file: Building Number (integer), Local Timestamp (long/bigint), Usage kW (double precision)
  * ---- NOTE: Unzip the data file: data/microgrid_all.csv.gz before running this script
  *
+ * -- Author: Rashmi Raghu
  *=================================================================================================
  */
 

@@ -1,175 +1,179 @@
 /*==================================================================================
 *         POST-PROCESSING
 *
-* - Calculate number of periodograms in each cluster.
-* - Find cluster assignments for all periodograms.
-* - Calculate mean and std deviation of distances in each cluster.
-* - Calculate pairwise L2-norm distances between centroids.
-
+* Post-processing results tables to enable easy visualization and analysis of results
+* - unnesting data points and periodogram arrays with respective cluster IDs
+* - computing distances between data points and cluster centroids etc.
+*
+* -- Author: Rashmi Raghu
 *==================================================================================*/
 
--- Unnesting 3 rounds of centroids by one level (2 steps per round)
+---------------------------------------------------------------------------
+-- Unnesting 3 rounds of centroids by one level (2-step process per round)
+-- (this should ideally be a helper function in MADlib or PDLtools)
+---------------------------------------------------------------------------
 -- Round 1 --
 drop table if exists pt.mgdata_km_centroids_unnest_full_tbl;
-CREATE TABLE pt.mgdata_km_centroids_unnest_full_tbl AS
-  SELECT
+create table pt.mgdata_km_centroids_unnest_full_tbl as
+  select
     k,
-    (index_id+(dim2-1))/dim2 AS array_id,
+    (index_id+(dim2-1))/dim2 as array_id,
     index_id,
     centroid_points
-  FROM
+  from
   (
-    SELECT
+    select
       k,
       dim1,
       dim2,
       generate_series(1,dim1*dim2,1) as index_id,
-      unnest(centroids) AS centroid_points
-    FROM (
-      SELECT k, centroids, array_upper(centroids,1) AS dim1, array_upper(centroids,2) AS dim2
-      FROM pt.kmeans_output_tbl
+      unnest(centroids) as centroid_points
+    from (
+      select k, centroids, array_upper(centroids,1) as dim1, array_upper(centroids,2) as dim2
+      from pt.kmeans_output_tbl
     ) t1
   ) t2
-DISTRIBUTED BY (k,array_id,index_id);
+distributed by (k,array_id,index_id);
 
 drop table if exists pt.mgdata_km_centroids_unnest_onelevel_cluster_id_tbl;
-CREATE TABLE pt.mgdata_km_centroids_unnest_onelevel_cluster_id_tbl AS
-  SELECT
+create table pt.mgdata_km_centroids_unnest_onelevel_cluster_id_tbl as
+  select
     k,
     centroid_array,
-    (madlib.closest_column(centroids_multidim_array, centroid_array)).column_id AS cluster_id
-  FROM (
-    SELECT
+    (madlib.closest_column(centroids_multidim_array, centroid_array)).column_id as cluster_id
+  from (
+    select
       t1.k,
       centroid_array,
       centroids as centroids_multidim_array
-    FROM (
-      SELECT
+    from (
+      select
         k,
-        array_agg(centroid_points ORDER BY index_id) AS centroid_array
-      FROM
+        array_agg(centroid_points order by index_id) as centroid_array
+      from
         pt.mgdata_km_centroids_unnest_full_tbl
-      GROUP BY
+      group by
         k, array_id
     ) t1,
     pt.kmeans_output_tbl t2
-    WHERE t1.k = t2.k
+    where t1.k = t2.k
   ) t2
-DISTRIBUTED by (cluster_id);
+distributed by (cluster_id);
 
 
 -- Round 2 --
 drop table if exists pt.mgdata_km_centroids_unnest_full_r2_tbl;
-CREATE TABLE pt.mgdata_km_centroids_unnest_full_r2_tbl AS
-  SELECT
+create table pt.mgdata_km_centroids_unnest_full_r2_tbl as
+  select
     k,
-    (index_id+(dim2-1))/dim2 AS array_id,
+    (index_id+(dim2-1))/dim2 as array_id,
     index_id,
     centroid_points
-  FROM
+  from
   (
-    SELECT
+    select
       k,
       dim1,
       dim2,
       generate_series(1,dim1*dim2,1) as index_id,
-      unnest(centroids) AS centroid_points
-    FROM (
-      SELECT k, centroids, array_upper(centroids,1) AS dim1, array_upper(centroids,2) AS dim2
-      FROM pt.kmeans_output_r2_tbl
+      unnest(centroids) as centroid_points
+    from (
+      select k, centroids, array_upper(centroids,1) as dim1, array_upper(centroids,2) as dim2
+      from pt.kmeans_output_r2_tbl
     ) t1
   ) t2
-DISTRIBUTED BY (k,array_id,index_id);
+distributed by (k,array_id,index_id);
 
 drop table if exists pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r2_tbl;
-CREATE TABLE pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r2_tbl AS
-  SELECT
+create table pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r2_tbl as
+  select
     k,
     centroid_array,
-    (madlib.closest_column(centroids_multidim_array, centroid_array)).column_id AS cluster_id
-  FROM (
-    SELECT
+    (madlib.closest_column(centroids_multidim_array, centroid_array)).column_id as cluster_id
+  from (
+    select
       t1.k,
       centroid_array,
       centroids as centroids_multidim_array
-    FROM (
-      SELECT
+    from (
+      select
         k,
-        array_agg(centroid_points ORDER BY index_id) AS centroid_array
-      FROM
+        array_agg(centroid_points order by index_id) as centroid_array
+      from
         pt.mgdata_km_centroids_unnest_full_r2_tbl
-      GROUP BY
+      group by
         k, array_id
     ) t1,
     pt.kmeans_output_r2_tbl t2
-    WHERE t1.k = t2.k
+    where t1.k = t2.k
   ) t2
-DISTRIBUTED by (cluster_id);
+distributed by (cluster_id);
 
 
 -- Round 3 --
 drop table if exists pt.mgdata_km_centroids_unnest_full_r3_tbl;
-CREATE TABLE pt.mgdata_km_centroids_unnest_full_r3_tbl AS
-  SELECT
+create table pt.mgdata_km_centroids_unnest_full_r3_tbl as
+  select
     k,
-    (index_id+(dim2-1))/dim2 AS array_id,
+    (index_id+(dim2-1))/dim2 as array_id,
     index_id,
     centroid_points
-  FROM
+  from
   (
-    SELECT
+    select
       k,
       dim1,
       dim2,
       generate_series(1,dim1*dim2,1) as index_id,
-      unnest(centroids) AS centroid_points
-    FROM (
-      SELECT k, centroids, array_upper(centroids,1) AS dim1, array_upper(centroids,2) AS dim2
-      FROM pt.kmeans_output_r3_tbl
+      unnest(centroids) as centroid_points
+    from (
+      select k, centroids, array_upper(centroids,1) as dim1, array_upper(centroids,2) as dim2
+      from pt.kmeans_output_r3_tbl
     ) t1
   ) t2
-DISTRIBUTED BY (k,array_id,index_id);
+distributed by (k,array_id,index_id);
 
 drop table if exists pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r3_tbl;
-CREATE TABLE pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r3_tbl AS
-  SELECT
+create table pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r3_tbl as
+  select
     k,
     centroid_array,
-    (madlib.closest_column(centroids_multidim_array, centroid_array)).column_id AS cluster_id
-  FROM (
-    SELECT
+    (madlib.closest_column(centroids_multidim_array, centroid_array)).column_id as cluster_id
+  from (
+    select
       t1.k,
       centroid_array,
       centroids as centroids_multidim_array
-    FROM (
-      SELECT
+    from (
+      select
         k,
-        array_agg(centroid_points ORDER BY index_id) AS centroid_array
-      FROM
+        array_agg(centroid_points order by index_id) as centroid_array
+      from
         pt.mgdata_km_centroids_unnest_full_r3_tbl
-      GROUP BY
+      group by
         k, array_id
     ) t1,
     pt.kmeans_output_r3_tbl t2
-    WHERE t1.k = t2.k
+    where t1.k = t2.k
   ) t2
-DISTRIBUTED by (cluster_id);
+distributed by (cluster_id);
 
-
--- Computing l2dist between centroids and all data points
+---------------------------------------------------------------------------
+-- Computing l2-distance between centroids and all data points
+---------------------------------------------------------------------------
 -- Round 1 --
-DROP TABLE IF EXISTS pt.mgdata_pgram_norm_array_cluster_id_l2dist_tbl;
-CREATE TABLE pt.mgdata_pgram_norm_array_cluster_id_l2dist_tbl AS
-  SELECT
+drop table if exists pt.mgdata_pgram_norm_array_cluster_id_l2dist_tbl;
+create table pt.mgdata_pgram_norm_array_cluster_id_l2dist_tbl as
+  select
     t2.*,
     km_centroid || madlib.array_of_float(array_upper(km_centroid, 1)) as km_centroid_padded,
-    sqrt(madlib.array_dot(madlib.array_sub(km_centroid, pgram_norm_arr),madlib.array_sub(km_centroid, pgram_norm_arr))) AS l2dist
-  FROM (
-    SELECT k, cluster_id, centroid_array::float8[] AS km_centroid
-    FROM pt.mgdata_km_centroids_unnest_onelevel_cluster_id_tbl
+    sqrt(madlib.array_dot(madlib.array_sub(km_centroid, pgram_norm_arr),madlib.array_sub(km_centroid, pgram_norm_arr))) as l2dist
+  from (
+    select k, cluster_id, centroid_array::float8[] as km_centroid
+    from pt.mgdata_km_centroids_unnest_onelevel_cluster_id_tbl
   ) t1,
   (
-    SELECT
+    select
       k,
       cluster_id,
       bgid,
@@ -183,26 +187,26 @@ CREATE TABLE pt.mgdata_pgram_norm_array_cluster_id_l2dist_tbl AS
       pgram_norm_arr,
       pgram_pt_id_arr_padded,
       pgram_norm_arr_padded
-    FROM pt.mgdata_pgram_norm_array_cluster_id_tbl
+    from pt.mgdata_pgram_norm_array_cluster_id_tbl
   ) t2
-  WHERE
+  where
     t1.k = t2.k
-    AND t1.cluster_id = t2.cluster_id
-DISTRIBUTED BY (k,cluster_id,bgid);
+    and t1.cluster_id = t2.cluster_id
+distributed by (k,cluster_id,bgid);
 
 -- Round 2 --
-DROP TABLE IF EXISTS pt.mgdata_pgram_norm_array_cluster_id_l2dist_r2_tbl;
-CREATE TABLE pt.mgdata_pgram_norm_array_cluster_id_l2dist_r2_tbl AS
-  SELECT
+drop table if exists pt.mgdata_pgram_norm_array_cluster_id_l2dist_r2_tbl;
+create table pt.mgdata_pgram_norm_array_cluster_id_l2dist_r2_tbl as
+  select
     t2.*,
     km_centroid || madlib.array_of_float(array_upper(km_centroid, 1)) as km_centroid_padded,
-    sqrt(madlib.array_dot(madlib.array_sub(km_centroid, pgram_norm_arr),madlib.array_sub(km_centroid, pgram_norm_arr))) AS l2dist
-  FROM (
-    SELECT k, cluster_id, centroid_array::float8[] AS km_centroid
-    FROM pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r2_tbl
+    sqrt(madlib.array_dot(madlib.array_sub(km_centroid, pgram_norm_arr),madlib.array_sub(km_centroid, pgram_norm_arr))) as l2dist
+  from (
+    select k, cluster_id, centroid_array::float8[] as km_centroid
+    from pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r2_tbl
   ) t1,
   (
-    SELECT
+    select
       k,
       cluster_id,
       bgid,
@@ -216,26 +220,26 @@ CREATE TABLE pt.mgdata_pgram_norm_array_cluster_id_l2dist_r2_tbl AS
       pgram_norm_arr,
       pgram_pt_id_arr_padded,
       pgram_norm_arr_padded
-    FROM pt.mgdata_pgram_norm_array_cluster_id_r2_tbl
+    from pt.mgdata_pgram_norm_array_cluster_id_r2_tbl
   ) t2
-  WHERE
+  where
     t1.k = t2.k
-    AND t1.cluster_id = t2.cluster_id
-DISTRIBUTED BY (k,cluster_id,bgid);
+    and t1.cluster_id = t2.cluster_id
+distributed by (k,cluster_id,bgid);
 
 -- Round 3 --
-DROP TABLE IF EXISTS pt.mgdata_pgram_norm_array_cluster_id_l2dist_r3_tbl;
-CREATE TABLE pt.mgdata_pgram_norm_array_cluster_id_l2dist_r3_tbl AS
-  SELECT
+drop table if exists pt.mgdata_pgram_norm_array_cluster_id_l2dist_r3_tbl;
+create table pt.mgdata_pgram_norm_array_cluster_id_l2dist_r3_tbl as
+  select
     t2.*,
     km_centroid || madlib.array_of_float(array_upper(km_centroid, 1)) as km_centroid_padded,
-    sqrt(madlib.array_dot(madlib.array_sub(km_centroid, pgram_norm_arr),madlib.array_sub(km_centroid, pgram_norm_arr))) AS l2dist
-  FROM (
-    SELECT k, cluster_id, centroid_array::float8[] AS km_centroid
-    FROM pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r3_tbl
+    sqrt(madlib.array_dot(madlib.array_sub(km_centroid, pgram_norm_arr),madlib.array_sub(km_centroid, pgram_norm_arr))) as l2dist
+  from (
+    select k, cluster_id, centroid_array::float8[] as km_centroid
+    from pt.mgdata_km_centroids_unnest_onelevel_cluster_id_r3_tbl
   ) t1,
   (
-    SELECT
+    select
       k,
       cluster_id,
       bgid,
@@ -249,16 +253,17 @@ CREATE TABLE pt.mgdata_pgram_norm_array_cluster_id_l2dist_r3_tbl AS
       pgram_norm_arr,
       pgram_pt_id_arr_padded,
       pgram_norm_arr_padded
-    FROM pt.mgdata_pgram_norm_array_cluster_id_r3_tbl
+    from pt.mgdata_pgram_norm_array_cluster_id_r3_tbl
   ) t2
-  WHERE
+  where
     t1.k = t2.k
-    AND t1.cluster_id = t2.cluster_id
-DISTRIBUTED BY (k,cluster_id,bgid);
+    and t1.cluster_id = t2.cluster_id
+distributed by (k,cluster_id,bgid);
 -- Query returned successfully: 198 rows affected, 12971 ms execution time.
 
-
+---------------------------------------------------------------------------
 -- Join all cluster levels in one table
+---------------------------------------------------------------------------
 drop table if exists pt.mgdata_pgram_norm_array_cluster_id_l2dist_allrounds_tbl;
 create table pt.mgdata_pgram_norm_array_cluster_id_l2dist_allrounds_tbl as
   select
@@ -353,8 +358,9 @@ create table pt.mgdata_pgram_norm_array_cluster_id_l2dist_allrounds_tbl as
 DISTRIBUTED by (bgid);
 -- Query returned successfully: 388 rows affected, 7196 ms execution time.
 
-
+---------------------------------------------------------------------------
 -- Put in overall cluster IDs
+---------------------------------------------------------------------------
 drop table if exists pt.mgdata_pgram_norm_array_cluster_id_l2dist_allrounds_wid_tbl;
 create table pt.mgdata_pgram_norm_array_cluster_id_l2dist_allrounds_wid_tbl as
   select
@@ -369,9 +375,9 @@ create table pt.mgdata_pgram_norm_array_cluster_id_l2dist_allrounds_wid_tbl as
     pgram_pt_id_arr_padded,
     pgram_norm_arr_padded,
     case
-      when l2dist_r3 is NULL and l2dist_r2 is NULL then l2dist
-      when l2dist_r3 is NULL and l2dist_r2 is NOT NULL then l2dist_r2
-      when l2dist_r3 is NOT NULL then l2dist_r3
+      when l2dist_r3 is null and l2dist_r2 is null then l2dist
+      when l2dist_r3 is null and l2dist_r2 is not null then l2dist_r2
+      when l2dist_r3 is not null then l2dist_r3
     end as l2dist_all,
     k,
     t1.cluster_id,
@@ -413,11 +419,13 @@ create table pt.mgdata_pgram_norm_array_cluster_id_l2dist_allrounds_wid_tbl as
   where t1.cluster_id = t2.cluster_id
     and t1.cluster_id_r2_nonull = t2.cluster_id_r2_nonull
     and t1.cluster_id_r3_nonull = t2.cluster_id_r3_nonull
-DISTRIBUTED by (bgid);
+distributed by (bgid);
 -- Query returned successfully: 388 rows affected, 8510 ms execution time.
 
-
+---------------------------------------------------------------------------
 -- Unnest time series signal and periodogram from combined table above
+-- Use this table below for visualization also
+---------------------------------------------------------------------------
 drop table if exists pt.mgdata_pgram_norm_unnest_cluster_id_l2dist_allrounds_wid_tbl;
 create table pt.mgdata_pgram_norm_unnest_cluster_id_l2dist_allrounds_wid_tbl as
   select
@@ -449,8 +457,9 @@ create table pt.mgdata_pgram_norm_unnest_cluster_id_l2dist_allrounds_wid_tbl as
 distributed by (bgid, win_id);
 -- Query returned successfully: 111744 rows affected, 15039 ms execution time.
 
-
--- For visualization only
+---------------------------------------------------------------------------
+-- More tables for visualization, if necessary
+---------------------------------------------------------------------------
 drop table if exists pt.mgdata_cluster_id_l2dist_allrounds_wid_viz_tbl;
 create table pt.mgdata_cluster_id_l2dist_allrounds_wid_viz_tbl as
   select
@@ -490,7 +499,10 @@ create table pt.mgdata_cluster_id_l2dist_allrounds_wid_viz_tbl as
 distributed by (bgid);
 -- Query returned successfully: 388 rows affected, 1327 ms execution time.
 
+---------------------------------------------------------------------------
 -- Get separate centroids unnested table for viz only
+---------------------------------------------------------------------------
+-- First the centroid arrays
 drop table if exists pt.mgdata_cluster_id_l2dist_allrounds_wid_centarray_viz_tbl;
 create table pt.mgdata_cluster_id_l2dist_allrounds_wid_centarray_viz_tbl as
   select
@@ -525,6 +537,7 @@ create table pt.mgdata_cluster_id_l2dist_allrounds_wid_centarray_viz_tbl as
   ) t1
 distributed by (cluster_id_all);
 
+-- Next step to getting unnested centroids for viz
 drop table if exists pt.mgdata_cluster_id_l2dist_allrounds_wid_centunnest_viz_tbl;
 create table pt.mgdata_cluster_id_l2dist_allrounds_wid_centunnest_viz_tbl as
   select
@@ -542,7 +555,9 @@ create table pt.mgdata_cluster_id_l2dist_allrounds_wid_centunnest_viz_tbl as
 distributed by (cluster_id_all, pgram_pt_id_padded);
 -- Query returned successfully: 8064 rows affected, 947 ms execution time.
 
--- Sub-select to include just the 5 closest signals to the centroid of each cluster
+---------------------------------------------------------------------------
+-- Sub-select time-series to include just the 5 closest signals to the centroid of each cluster
+---------------------------------------------------------------------------
 drop table if exists pt.mg_pgram_norm_unnest_cluster_id_l2dist_allrounds_wid_viz_tbl;
 create table pt.mg_pgram_norm_unnest_cluster_id_l2dist_allrounds_wid_viz_tbl as
   select

@@ -2,9 +2,9 @@
  *				 GENERATING PERIODOGRAMS
  *
  * - Aggregate the remaining time series data for each smart meter into arrays
- *		- Remaining time series data (TABLE mgdemo.mgdata_dfct1_itvlct1440_t1) is for 24 hours of data
- *			(1440 readings per meter)
  * - Use spec.pgram function in PL/R to compute periodograms
+ *
+ * -- Author: Rashmi Raghu
  *=================================================================================================
  */
 
@@ -22,33 +22,7 @@ $$
 LANGUAGE 'plr';
 -- Query returned successfully with no result in 49 ms.
 
--- -- TABLE of periodogram arrays for each device
--- CREATE SEQUENCE gen_ids;
--- -- Query returned successfully with no result in 34 ms.
---
--- SELECT setval('gen_ids',1); -- 0 is not accepted by the sequence
--- CREATE TABLE mgdemo.mgdata_pgram_array_tbl AS
---   SELECT
---     bgid,
---     mgdemo.pgram_fn(usagekw_array,0.0) AS pgram
---   FROM
---     mgdemo.mgdata_ts_array_tbl
--- DISTRIBUTED BY (bgid);
--- -- query result with 1 row discarded.
--- -- Query returned successfully: 442 rows affected, 464 ms execution time.
---
---
--- -- TABLE of periodograms unnested for each device
--- CREATE TABLE mgdemo.mgdata_pgram_array_unnest_tbl AS
---   SELECT
---     bgid,
---     generate_series(1,array_upper(pgram,1)) as pgid,
---     unnest(pgram) as pgram_val
---   FROM
---     mgdemo.mgdata_pgram_array_tbl
--- DISTRIBUTED BY (bgid,pgid);
--- -- Query returned successfully: 318240 rows affected, 529 ms execution time.
-
+-- Exclude points that have nearly zero (but not quite zero) signal values
 drop table if exists pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl;
 create table pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl as
   select *
@@ -66,12 +40,11 @@ create table pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl as
       pt.mgdata_clean_with_id_nozero_sum_5min_norm_tbl
     group by 1,2,3,4
   ) t1
-  where usagekw_sum_5min_norm_denom > 1e-10 -- exclude points that have nearly zero (but not quite) signal values
+  where usagekw_sum_5min_norm_denom > 1e-10 -- exclude points that have nearly zero values
 DISTRIBUTED by (bgid);
 -- Query returned successfully: 388 rows affected, 13303 ms execution time.
 
-
-
+-- Generate the periodogram features
 drop table if exists pt.mgdata_pgram_norm_array_tbl;
 create table pt.mgdata_pgram_norm_array_tbl as
   select
