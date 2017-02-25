@@ -9,11 +9,11 @@ The analysis presented in this repo has also been successfully applied to commer
 ![Load Profiling Dashboard](./docs/screen_shot_for_repo_2.png)
 
 ## Demo the results locally (results packaged with the dashboard)
-###### Pre-requisites:
+#### Pre-requisites:
 * Tableau installed on the machine from which you will view the dashboard (e.g. your laptop)
 * Make sure the version of Tableau installed can open the file
 
-###### Instructions:
+#### Instructions:
 * Download the latest Tableau workbook (with extract) file that has the .twbx extension from the twbx/ directory
 * Open the file and go to the "Click Here for The Story!" tab (enable presentation mode if you like)
 * Walk through the panels of the story and explore the dashboard as suggested
@@ -21,7 +21,7 @@ The analysis presented in this repo has also been successfully applied to commer
 
 
 ## Demo the code by running it and explore the results by live-connecting to the database
-###### Requires:
+#### Pre-requisites:
 * GPDB installation:
     * GPDB sandbox virtual machine available at [https://network.pivotal.io/] (https://network.pivotal.io/)
     * Login credentials to the database
@@ -30,7 +30,7 @@ The analysis presented in this repo has also been successfully applied to commer
 * Tableau installed on the machine from which you will view the dashboard (e.g. your laptop)
     * Make sure the version of Tableau installed can open the file
 
-###### Instructions:
+#### Instructions:
 All relevant code to be run for the demo is located in the src/sql/ directory.
 * Code creates its own schema with the name "mgdemo" and can be run in an existing database or a new db
   * NOTE: CODE WILL FIRST DROP ANY EXISTING SCHEMA BY THE NAME "mgdemo"
