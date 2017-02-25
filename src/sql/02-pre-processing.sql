@@ -226,8 +226,8 @@ distributed by (rgid);
 After further exploration of the data (including preliminary clustering results),
 remove signals with all zeros from the dataset for more meaningful results
 */
-drop table if exists pt.mgdata_clean_with_id_nozero_tbl;
-create table pt.mgdata_clean_with_id_nozero_tbl as
+drop table if exists mgdemo.mgdata_clean_with_id_nozero_tbl;
+create table mgdemo.mgdata_clean_with_id_nozero_tbl as
   select
     rgid,
     t1.bgid,
@@ -256,8 +256,8 @@ distributed by (bgid,rid);
 Aggregate signals over 5-minute time windows to smooth out very high frequencies
 that might be adding too much noise to the data
 */
-drop table if exists pt.mgdata_clean_with_id_nozero_sum_5min_tbl;
-create table pt.mgdata_clean_with_id_nozero_sum_5min_tbl as
+drop table if exists mgdemo.mgdata_clean_with_id_nozero_sum_5min_tbl;
+create table mgdemo.mgdata_clean_with_id_nozero_sum_5min_tbl as
   select
     bgid,
     win_id,
@@ -273,7 +273,7 @@ create table pt.mgdata_clean_with_id_nozero_sum_5min_tbl as
     select *,
       tslocal_fromzero::int / 300 as win_id
     from
-      pt.mgdata_clean_with_id_nozero_tbl
+      mgdemo.mgdata_clean_with_id_nozero_tbl
   ) t1
   group by bgid, win_id, building_num
 DISTRIBUTED by (bgid,win_id);
@@ -284,8 +284,8 @@ DISTRIBUTED by (bgid,win_id);
 Normalize the aggregated / smoothed signals
 This will be used as input to periodogram generation and clustering following that
 */
-drop table if exists pt.mgdata_clean_with_id_nozero_sum_5min_norm_tbl;
-create table pt.mgdata_clean_with_id_nozero_sum_5min_norm_tbl as
+drop table if exists mgdemo.mgdata_clean_with_id_nozero_sum_5min_norm_tbl;
+create table mgdemo.mgdata_clean_with_id_nozero_sum_5min_norm_tbl as
   select
     bgid,
     win_id,
@@ -310,7 +310,7 @@ create table pt.mgdata_clean_with_id_nozero_sum_5min_norm_tbl as
         avg(usagekw_sum_5min) over (partition by bgid) as usagekw_sum_5min_mean,
         *
       from
-        pt.mgdata_clean_with_id_nozero_sum_5min_tbl
+        mgdemo.mgdata_clean_with_id_nozero_sum_5min_tbl
     ) t1
   ) t2
 DISTRIBUTED by (bgid,win_id);

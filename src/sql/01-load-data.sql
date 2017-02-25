@@ -15,7 +15,8 @@
  *=================================================================================================
  */
 
--- Create schema for demo
+-- Drop any existing schema and create a new one for the demo
+drop schema if exists mgdemo cascade;
 create schema mgdemo;
 -- Query returned successfully with no result in 45 ms.
 

@@ -24,15 +24,15 @@
 -- Round 1 --
 ---------------------------------------------------------------
 -- Call k-means clustering function in-database using MADlib
-drop table if exists pt.kmeans_output_tbl;
-create table pt.kmeans_output_tbl as
- select 10 as k, * from madlib.kmeanspp( 'pt.mgdata_pgram_norm_array_tbl', 'pgram_norm_arr', 10, 'madlib.dist_norm2', 'madlib.avg', 100, 0.001)
+drop table if exists mgdemo.kmeans_output_tbl;
+create table mgdemo.kmeans_output_tbl as
+ select 10 as k, * from madlib.kmeanspp( 'mgdemo.mgdata_pgram_norm_array_tbl', 'pgram_norm_arr', 10, 'madlib.dist_norm2', 'madlib.avg', 100, 0.001)
 distributed randomly;
 -- Query returned successfully: one row affected, 6287 ms execution time.
 
 -- Assign cluster IDs to all data points
-drop table if exists pt.mgdata_pgram_norm_array_cluster_id_tbl;
-create table pt.mgdata_pgram_norm_array_cluster_id_tbl as
+drop table if exists mgdemo.mgdata_pgram_norm_array_cluster_id_tbl;
+create table mgdemo.mgdata_pgram_norm_array_cluster_id_tbl as
  select
    k,
    (madlib.closest_column(centroids_multidim_array, pgram_norm_arr)).column_id as cluster_id,
@@ -48,13 +48,13 @@ create table pt.mgdata_pgram_norm_array_cluster_id_tbl as
    win_id_arr as pgram_pt_id_arr_padded,
    pgram_norm_arr || madlib.array_of_float(array_upper(pgram_norm_arr,1)) as pgram_norm_arr_padded
  from
-   pt.mgdata_pgram_norm_array_tbl,
-   (select k, centroids as centroids_multidim_array from pt.kmeans_output_tbl) t1
+   mgdemo.mgdata_pgram_norm_array_tbl,
+   (select k, centroids as centroids_multidim_array from mgdemo.kmeans_output_tbl) t1
 distributed by (k,cluster_id,bgid);
 -- Query returned successfully: 388 rows affected, 5708 ms execution time.
 
 -- How many data points are in each cluster?
-select cluster_id, count(*) from pt.mgdata_pgram_norm_array_cluster_id_tbl
+select cluster_id, count(*) from mgdemo.mgdata_pgram_norm_array_cluster_id_tbl
 group by 1 order by 1;
 -- 0;5
 -- 1;1
@@ -72,8 +72,8 @@ group by 1 order by 1;
 ---------------------------------------------------------------
 -- Cluster #4 from the above clustering result consists of over 88% of the data points
 -- Cluster this set of data points further
-drop table if exists pt.mgdata_pgram_norm_array_r2_tbl;
-create table pt.mgdata_pgram_norm_array_r2_tbl as
+drop table if exists mgdemo.mgdata_pgram_norm_array_r2_tbl;
+create table mgdemo.mgdata_pgram_norm_array_r2_tbl as
  select
    k as k_r1,
    cluster_id as cluster_id_r1,
@@ -88,21 +88,21 @@ create table pt.mgdata_pgram_norm_array_r2_tbl as
    pgram_norm_arr,
    pgram_pt_id_arr_padded,
    pgram_norm_arr_padded
-from pt.mgdata_pgram_norm_array_cluster_id_tbl
+from mgdemo.mgdata_pgram_norm_array_cluster_id_tbl
 where cluster_id = 4
 distributed by (bgid);
 -- Query returned successfully: 345 rows affected, 29696 ms execution time.
 
 -- Call k-means clustering function in-database using MADlib
-drop table if exists pt.kmeans_output_r2_tbl;
-create table pt.kmeans_output_r2_tbl as
- SELECT 10 as k, * FROM madlib.kmeanspp( 'pt.mgdata_pgram_norm_array_r2_tbl', 'pgram_norm_arr', 10, 'madlib.dist_norm2', 'madlib.avg', 100, 0.001)
+drop table if exists mgdemo.kmeans_output_r2_tbl;
+create table mgdemo.kmeans_output_r2_tbl as
+ SELECT 10 as k, * FROM madlib.kmeanspp( 'mgdemo.mgdata_pgram_norm_array_r2_tbl', 'pgram_norm_arr', 10, 'madlib.dist_norm2', 'madlib.avg', 100, 0.001)
 distributed randomly;
 -- Query returned successfully: one row affected, 6160 ms execution time.
 
 -- Assign cluster IDs to data points
-drop table if exists pt.mgdata_pgram_norm_array_cluster_id_r2_tbl;
-create table pt.mgdata_pgram_norm_array_cluster_id_r2_tbl as
+drop table if exists mgdemo.mgdata_pgram_norm_array_cluster_id_r2_tbl;
+create table mgdemo.mgdata_pgram_norm_array_cluster_id_r2_tbl as
  select
    k,
    (madlib.closest_column(centroids_multidim_array, pgram_norm_arr)).column_id as cluster_id,
@@ -118,13 +118,13 @@ create table pt.mgdata_pgram_norm_array_cluster_id_r2_tbl as
    pgram_pt_id_arr_padded,
    pgram_norm_arr_padded
  from
-   pt.mgdata_pgram_norm_array_r2_tbl,
-   (select k, centroids as centroids_multidim_array from pt.kmeans_output_r2_tbl) t1
+   mgdemo.mgdata_pgram_norm_array_r2_tbl,
+   (select k, centroids as centroids_multidim_array from mgdemo.kmeans_output_r2_tbl) t1
 distributed by (k,cluster_id,bgid);
 -- Query returned successfully: 345 rows affected, 8654 ms execution time.
 
 -- How many data points are in each cluster?
-select cluster_id, count(*) from pt.mgdata_pgram_norm_array_cluster_id_r2_tbl
+select cluster_id, count(*) from mgdemo.mgdata_pgram_norm_array_cluster_id_r2_tbl
 group by 1 order by 1;
 -- 0;15
 -- 1;2
@@ -142,8 +142,8 @@ group by 1 order by 1;
 ---------------------------------------------------------------
 -- Cluster #4 above consists of over 57% of the data points that were input to the above clustering function
 -- Cluster this set again
-drop table if exists pt.mgdata_pgram_norm_array_r3_tbl;
-create table pt.mgdata_pgram_norm_array_r3_tbl as
+drop table if exists mgdemo.mgdata_pgram_norm_array_r3_tbl;
+create table mgdemo.mgdata_pgram_norm_array_r3_tbl as
  select
    k as k_r2,
    cluster_id as cluster_id_r2,
@@ -158,21 +158,21 @@ create table pt.mgdata_pgram_norm_array_r3_tbl as
    pgram_norm_arr,
    pgram_pt_id_arr_padded,
    pgram_norm_arr_padded
-from pt.mgdata_pgram_norm_array_cluster_id_r2_tbl
+from mgdemo.mgdata_pgram_norm_array_cluster_id_r2_tbl
 where cluster_id = 4
 distributed by (bgid);
 -- Query returned successfully: 198 rows affected, 3517 ms execution time.
 
 -- Call k-means clustering function in-database using MADlib
-drop table if exists pt.kmeans_output_r3_tbl;
-create table pt.kmeans_output_r3_tbl as
- SELECT 10 as k, * FROM madlib.kmeanspp( 'pt.mgdata_pgram_norm_array_r3_tbl', 'pgram_norm_arr', 10, 'madlib.dist_norm2', 'madlib.avg', 100, 0.001)
+drop table if exists mgdemo.kmeans_output_r3_tbl;
+create table mgdemo.kmeans_output_r3_tbl as
+ SELECT 10 as k, * FROM madlib.kmeanspp( 'mgdemo.mgdata_pgram_norm_array_r3_tbl', 'pgram_norm_arr', 10, 'madlib.dist_norm2', 'madlib.avg', 100, 0.001)
 distributed randomly;
 -- Query returned successfully: one row affected, 16586 ms execution time.
 
 -- Assign cluster IDs to data points
-drop table if exists pt.mgdata_pgram_norm_array_cluster_id_r3_tbl;
-create table pt.mgdata_pgram_norm_array_cluster_id_r3_tbl as
+drop table if exists mgdemo.mgdata_pgram_norm_array_cluster_id_r3_tbl;
+create table mgdemo.mgdata_pgram_norm_array_cluster_id_r3_tbl as
  select
    k,
    (madlib.closest_column(centroids_multidim_array, pgram_norm_arr)).column_id as cluster_id,
@@ -188,13 +188,13 @@ create table pt.mgdata_pgram_norm_array_cluster_id_r3_tbl as
    pgram_pt_id_arr_padded,
    pgram_norm_arr_padded
  from
-   pt.mgdata_pgram_norm_array_r3_tbl,
-   (select k, centroids as centroids_multidim_array from pt.kmeans_output_r3_tbl) t1
+   mgdemo.mgdata_pgram_norm_array_r3_tbl,
+   (select k, centroids as centroids_multidim_array from mgdemo.kmeans_output_r3_tbl) t1
 distributed by (k,cluster_id,bgid);
 -- Query returned successfully: 198 rows affected, 1689 ms execution time.
 
 -- How many data points are in each cluster?
-select cluster_id, count(*) from pt.mgdata_pgram_norm_array_cluster_id_r3_tbl
+select cluster_id, count(*) from mgdemo.mgdata_pgram_norm_array_cluster_id_r3_tbl
 group by 1 order by 1;
 -- 0;98
 -- 1;7

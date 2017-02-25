@@ -23,8 +23,8 @@ LANGUAGE 'plr';
 -- Query returned successfully with no result in 49 ms.
 
 -- Exclude points that have nearly zero (but not quite zero) signal values
-drop table if exists pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl;
-create table pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl as
+drop table if exists mgdemo.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl;
+create table mgdemo.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl as
   select *
   from
   (
@@ -37,7 +37,7 @@ create table pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl as
       array_agg(usagekw_sum_5min order by win_id) as usagekw_sum_5min_arr,
       array_agg(usagekw_sum_5min_norm order by win_id) as usagekw_sum_5min_norm_arr
     from
-      pt.mgdata_clean_with_id_nozero_sum_5min_norm_tbl
+      mgdemo.mgdata_clean_with_id_nozero_sum_5min_norm_tbl
     group by 1,2,3,4
   ) t1
   where usagekw_sum_5min_norm_denom > 1e-10 -- exclude points that have nearly zero values
@@ -45,8 +45,8 @@ DISTRIBUTED by (bgid);
 -- Query returned successfully: 388 rows affected, 13303 ms execution time.
 
 -- Generate the periodogram features
-drop table if exists pt.mgdata_pgram_norm_array_tbl;
-create table pt.mgdata_pgram_norm_array_tbl as
+drop table if exists mgdemo.mgdata_pgram_norm_array_tbl;
+create table mgdemo.mgdata_pgram_norm_array_tbl as
   select
     bgid,
     building_num,
@@ -58,7 +58,7 @@ create table pt.mgdata_pgram_norm_array_tbl as
     win_id_arr[1:(array_upper(win_id_arr,1)/2)] as pgram_pt_id_arr,
     mgdemo.pgram_fn(usagekw_sum_5min_norm_arr,0.0) as pgram_norm_arr
   from
-    pt.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl
+    mgdemo.mgdata_clean_with_id_nozero_sum_5min_norm_array_tbl
 distributed by (bgid);
 -- NOTICE:  table "mgdata_pgram_norm_array_tbl" does not exist, skipping
 -- Query returned successfully: 388 rows affected, 32609 ms execution time.
