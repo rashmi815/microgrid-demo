@@ -44,3 +44,7 @@ All relevant code to be run for the demo is located in the src/sql/ directory.
       * Note that there is some randomness in the seeding process. So, the results may not be exactly the same as those in the twbx workbook.
       * The clustering process for this type of data can result in several well-defined clusters that are small or moderately sized and one large catch-all cluster. We re-cluster any large cluster as a further step in the analysis. When re-running this part of the code make sure to re-cluster the correct (largest) one for your run of the problem
   * 05-post-processing.sql
+
+## Acknowledgements
+* Kaushik Das, Chief Data Scientist, Pivotal Software Inc.
+* April Song, Data Scientist, Pivotal Software Inc.
