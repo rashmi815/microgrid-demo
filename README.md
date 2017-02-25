@@ -6,7 +6,7 @@ This analysis uses the Microgrid [dataset] (http://smart.cs.umass.edu/download.p
 
 The analysis presented in this repo has also been successfully applied to commercial smart meter data and provided useful insights by clustering similar consumers together based on their power usage signals.
 
-![Load Profiling Dashboard](/Users/rraghu/github/microgrid-demo/tmp/screen_shot_for_repo_2.png)
+![Load Profiling Dashboard](./docs/screen_shot_for_repo_2.png)
 
 ## Demo the results locally (results packaged with the dashboard)
 ###### Pre-requisites:
